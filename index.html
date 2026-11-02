@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1e2a3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Square Dash">
+<title>Square Dash</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231e2a3a'/%3E%3Crect x='12' y='12' width='18' height='18' rx='4' fill='%23e63946'/%3E%3Crect x='34' y='12' width='18' height='18' rx='4' fill='%232a9d8f'/%3E%3Crect x='12' y='34' width='18' height='18' rx='4' fill='%23e9c46a'/%3E%3Crect x='34' y='34' width='18' height='18' rx='4' fill='%23457b9d'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f4f1ea;--ink:#1d2433;--muted:#6b7385;--card:#ffffff;--cell:#e6e1d3;--block:#2b2f3a;--blocktxt:#c9cfdc;--accent:#e63946;--line:#d9d3c3}
+@media (prefers-color-scheme:dark){:root{--bg:#121826;--ink:#eef1f6;--muted:#97a0b5;--card:#1d2638;--cell:#2a3549;--block:#0a0d13;--blocktxt:#8d96ab;--line:#33405a}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);display:flex;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:manipulation;overscroll-behavior:none}
+#app{width:100%;max-width:520px;padding:max(10px,env(safe-area-inset-top)) 12px max(14px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:18px;margin:0;letter-spacing:.2px}
+#timer{font-variant-numeric:tabular-nums;font-size:26px;font-weight:700;letter-spacing:.5px}
+#best{font-size:12px;color:var(--muted);text-align:right;min-height:14px}
+.row{display:flex;gap:8px}
+.btn{flex:1;font:inherit;font-size:14px;font-weight:600;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 8px;cursor:pointer}
+.btn:active{transform:scale(.97)}
+.btn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.danger{color:var(--accent)}
+#dice{display:flex;gap:6px;justify-content:center}
+.chip{min-width:40px;text-align:center;font-weight:700;font-size:14px;background:var(--block);color:#fff;border-radius:8px;padding:6px 0;font-variant-numeric:tabular-nums}
+#board{display:grid;grid-template-columns:20px repeat(6,1fr);width:min(100%,calc(44dvh + 20px));margin:0 auto}
+.lab{height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted)}
+#board .lab:not(:nth-child(-n+7)){height:auto}
+.cell{position:relative;aspect-ratio:1;border:0;padding:0;background:none;cursor:pointer}
+.in{position:absolute;inset:3px;border-radius:6px;background:var(--cell);display:flex;align-items:center;justify-content:center}
+.in.blk{background:var(--block);color:var(--blocktxt);font-size:10px;font-weight:700}
+.in.hint{animation:pulse .7s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.45}to{opacity:1}}
+#tray{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:120px;align-content:flex-start}
+.pc{display:grid;gap:2px;padding:8px;border-radius:10px;background:var(--card);border:2px solid transparent;cursor:pointer;align-content:center;justify-content:center;min-width:46px;min-height:46px}
+.pc.sel{border-color:var(--ink);transform:translateY(-2px)}
+.pc.placed{opacity:.28}
+.mc{width:15px;height:15px;border-radius:3px}
+#msg{min-height:18px;text-align:center;font-size:13px;color:var(--muted)}
+.overlay{position:fixed;inset:0;background:rgba(10,14,22,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.overlay.show{display:flex}
+.card{background:var(--card);border-radius:18px;padding:24px;width:min(340px,100%);text-align:center}
+.card h2{margin:0 0 6px;font-size:26px}
+.card .big{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;margin:6px 0}
+.card p{margin:4px 0 14px;color:var(--muted)}
+.help{font-size:12px;color:var(--muted);text-align:center;line-height:1.4}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Square Dash</h1>
+    <div><div id="timer">0:00</div><div id="best"></div></div>
+  </header>
+  <div class="row">
+    <button class="btn" id="bNew">New puzzle</button>
+    <button class="btn" id="bDaily">Daily</button>
+  </div>
+  <div id="dice"></div>
+  <div id="board" aria-label="Game board"></div>
+  <div id="msg"></div>
+  <div id="tray"></div>
+  <div class="row">
+    <button class="btn" id="bRot">Rotate</button>
+    <button class="btn" id="bFlip">Flip</button>
+    <button class="btn" id="bHint">Hint</button>
+  </div>
+  <div class="row">
+    <button class="btn" id="bReset">Clear board</button>
+    <button class="btn danger" id="bGive">Give up</button>
+  </div>
+  <div class="help">Tap a piece, then tap the board to drop it. Tap the selected piece again to rotate. Tap a placed piece to pick it up. Fill every empty square to win.</div>
+</div>
+
+<div class="overlay" id="win"><div class="card">
+  <h2>Solved!</h2>
+  <div class="big" id="winTime">0:00</div>
+  <p id="winNote"></p>
+  <div class="row"><button class="btn" id="winClose">Close</button><button class="btn on" id="winNew">New puzzle</button></div>
+</div></div>
+
+<script>
+// CORE-START
+const N=6, LETTERS='ABCDEF';
+const PIECES=[
+ {name:'Dot',   color:'#e63946',cells:[[0,0]]},
+ {name:'Domino',color:'#f4a261',cells:[[0,0],[0,1]]},
+ {name:'Bar 3', color:'#2a9d8f',cells:[[0,0],[0,1],[0,2]]},
+ {name:'Corner',color:'#e9c46a',cells:[[0,0],[1,0],[1,1]]},
+ {name:'Block', color:'#457b9d',cells:[[0,0],[0,1],[1,0],[1,1]]},
+ {name:'Bar 4', color:'#8ecae6',cells:[[0,0],[0,1],[0,2],[0,3]]},
+ {name:'L',     color:'#9b5de5',cells:[[0,0],[1,0],[2,0],[2,1]]},
+ {name:'T',     color:'#f15bb5',cells:[[0,0],[0,1],[0,2],[1,1]]},
+ {name:'Zig',   color:'#06d6a0',cells:[[0,0],[0,1],[1,1],[1,2]]},
+];
+// Seven dice, six faces each. Each roll drops one blocker per die.
+const DICE=[
+ ['A1','A2','A3','B1','B2','C1'],
+ ['A4','A5','A6','B5','B6','C6'],
+ ['B3','B4','C2','C3','D1','D2'],
+ ['C4','C5','D3','D4','E1','E2'],
+ ['D5','D6','E3','E4','F1','F2'],
+ ['E5','E6','F3','F4','F5','F6'],
+ ['B4','C3','D2','E5','C5','D4'],
+];
+const idxOf=s=>LETTERS.indexOf(s[0])*N+(+s[1]-1);
+const nameOf=i=>LETTERS[Math.floor(i/N)]+(i%N+1);
+function norm(cells){
+  const mr=Math.min(...cells.map(c=>c[0])), mc=Math.min(...cells.map(c=>c[1]));
+  return cells.map(c=>[c[0]-mr,c[1]-mc]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+}
+const rot=cells=>norm(cells.map(([r,c])=>[c,-r]));
+const flip=cells=>norm(cells.map(([r,c])=>[r,-c]));
+function orients(cells){
+  const seen=new Map(); let cur=norm(cells);
+  for(let f=0;f<2;f++){
+    for(let k=0;k<4;k++){ seen.set(JSON.stringify(cur),cur); cur=rot(cur); }
+    cur=flip(cur);
+  }
+  return [...seen.values()];
+}
+// Orientations expressed relative to their first (row-major) cell.
+const ORI=PIECES.map(p=>orients(p.cells).map(o=>{const [r0,c0]=o[0];return o.map(([r,c])=>[r-r0,c-c0]);}));
+const SIZES=PIECES.map(p=>p.cells.length);
+
+// grid: 36 entries, -1 = free, otherwise occupied. used: bool[9].
+// Returns list of {p, cells} that completes the grid, or null.
+function solveGrid(grid,used,limit){
+  const g=grid.slice(), u=used.slice(), out=[]; let nodes=0;
+  function feasible(){
+    let reach=1;
+    for(let p=0;p<9;p++) if(!u[p]) reach|=reach<<SIZES[p];
+    const seen=new Uint8Array(36);
+    for(let i=0;i<36;i++){
+      if(g[i]!==-1||seen[i]) continue;
+      const st=[i]; seen[i]=1; let n=0;
+      while(st.length){
+        const x=st.pop(); n++;
+        const r=(x/6)|0, c=x%6;
+        if(r>0&&g[x-6]===-1&&!seen[x-6]){seen[x-6]=1;st.push(x-6);}
+        if(r<5&&g[x+6]===-1&&!seen[x+6]){seen[x+6]=1;st.push(x+6);}
+        if(c>0&&g[x-1]===-1&&!seen[x-1]){seen[x-1]=1;st.push(x-1);}
+        if(c<5&&g[x+1]===-1&&!seen[x+1]){seen[x+1]=1;st.push(x+1);}
+      }
+      if(n>29||!((reach>>n)&1)) return false;
+    }
+    return true;
+  }
+  function dfs(){
+    if(++nodes>limit) return false;
+    const i=g.indexOf(-1);
+    if(i<0) return true;
+    if(!feasible()) return false;
+    const r0=(i/6)|0, c0=i%6;
+    for(let p=0;p<9;p++){
+      if(u[p]) continue;
+      for(const o of ORI[p]){
+        const cs=[]; let good=true;
+        for(const [dr,dc] of o){
+          const r=r0+dr, c=c0+dc;
+          if(r<0||r>5||c<0||c>5||g[r*6+c]!==-1){good=false;break;}
+          cs.push(r*6+c);
+        }
+        if(!good) continue;
+        for(const x of cs) g[x]=p;
+        u[p]=true; out.push({p,cells:cs});
+        if(dfs()) return true;
+        out.pop(); u[p]=false;
+        for(const x of cs) g[x]=-1;
+      }
+    }
+    return false;
+  }
+  return dfs()?out.slice():null;
+}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+// Roll the dice; re-roll until the layout has at least one solution.
+function rollPuzzle(rng){
+  for(let attempt=0;attempt<500;attempt++){
+    const taken=new Set(), blockers=[];
+    for(const die of DICE){
+      let opts=die.map(idxOf).filter(x=>!taken.has(x));
+      if(!opts.length) opts=[...Array(36).keys()].filter(x=>!taken.has(x));
+      const x=opts[Math.floor(rng()*opts.length)];
+      taken.add(x); blockers.push(x);
+    }
+    const grid=Array(36).fill(-1); blockers.forEach(x=>grid[x]=9);
+    const solution=solveGrid(grid,Array(9).fill(false),300000);
+    if(solution) return {blockers,solution};
+  }
+  throw new Error('no puzzle');
+}
+// CORE-END
+
+// ---------- UI ----------
+const $=s=>document.querySelector(s);
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+const KEY='squaredash.v1', BESTKEY='squaredash.best.v1';
+const fmt=ms=>{const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+
+function blank(){
+  return {mode:'random',seed:0,blockers:[],grid:Array(36).fill(-1),placed:Array(9).fill(null),
+    sel:null,cur:PIECES.map(p=>norm(p.cells)),solution:[],elapsed:0,hints:0,
+    solved:false,gaveUp:false,rolling:false,ghost:null,hint:null};
+}
+let S=blank(), last=performance.now();
+
+function bestKey(){return S.mode==='daily'?'daily'+S.seed:'random';}
+function toast(t){$('#msg').textContent=t;clearTimeout(toast.t);if(t)toast.t=setTimeout(()=>{$('#msg').textContent='';},3000);}
+
+function save(){
+  lsSet(KEY,{mode:S.mode,seed:S.seed,blockers:S.blockers,placed:S.placed,elapsed:Math.round(S.elapsed),
+    hints:S.hints,solved:S.solved,gaveUp:S.gaveUp});
+}
+
+function applyPlacements(){
+  S.grid=Array(36).fill(-1);
+  S.blockers.forEach(x=>S.grid[x]=9);
+  S.placed.forEach((cells,p)=>{if(cells)cells.forEach(x=>S.grid[x]=p);});
+}
+
+function groupAt(i){
+  const v=S.grid[i];
+  if(v>=0&&v<9) return 'p'+v;
+  if(S.ghost&&S.ghost.cells.includes(i)) return 'g';
+  if(S.hint&&S.hint.cells.includes(i)) return 'h';
+  return null;
+}
+function colorAt(i){
+  const v=S.grid[i];
+  if(v>=0&&v<9) return PIECES[v].color;
+  if(S.ghost&&S.ghost.cells.includes(i)) return PIECES[S.ghost.p].color+'99';
+  if(S.hint&&S.hint.cells.includes(i)) return PIECES[S.hint.p].color;
+  return null;
+}
+
+function renderBoard(){
+  const b=$('#board'); b.replaceChildren();
+  b.append(el('div','lab'));
+  for(let c=1;c<=6;c++) b.append(el('div','lab',c));
+  for(let r=0;r<6;r++){
+    b.append(el('div','lab',LETTERS[r]));
+    for(let c=0;c<6;c++){
+      const i=r*6+c, v=S.grid[i];
+      const btn=el('button','cell'); btn.dataset.i=i; btn.setAttribute('aria-label',nameOf(i));
+      const inn=el('div','in'); btn.append(inn);
+      const g=groupAt(i), col=colorAt(i);
+      if(v===9){ inn.classList.add('blk'); inn.textContent=nameOf(i); }
+      else if(g){
+        inn.style.background=col;
+        if(g==='h') inn.classList.add('hint');
+        const same=j=>groupAt(j)===g;
+        const up=r>0&&same(i-6), dn=r<5&&same(i+6), lf=c>0&&same(i-1), rt=c<5&&same(i+1);
+        inn.style.inset=[up,rt,dn,lf].map(x=>x?'0':'3px').join(' ');
+        const R=6;
+        inn.style.borderRadius=[(!up&&!lf),(!up&&!rt),(!dn&&!rt),(!dn&&!lf)].map(x=>x?R+'px':'0').join(' ');
+      }
+      b.append(btn);
+    }
+  }
+}
+
+function renderTray(){
+  const t=$('#tray'); t.replaceChildren();
+  PIECES.forEach((p,pid)=>{
+    const cs=S.cur[pid];
+    const w=Math.max(...cs.map(c=>c[1]))+1, h=Math.max(...cs.map(c=>c[0]))+1;
+    const d=el('div','pc'+(S.sel===pid?' sel':'')+(S.placed[pid]?' placed':''));
+    d.dataset.p=pid; d.setAttribute('aria-label',p.name);
+    d.style.gridTemplateColumns=`repeat(${w},15px)`;
+    d.style.gridTemplateRows=`repeat(${h},15px)`;
+    const set=new Set(cs.map(c=>c[0]*w+c[1]));
+    for(let k=0;k<w*h;k++){
+      const m=el('div','mc');
+      if(set.has(k)) m.style.background=p.color; else m.style.visibility='hidden';
+      d.append(m);
+    }
+    t.append(d);
+  });
+}
+
+function renderDice(show){
+  const d=$('#dice'); d.replaceChildren();
+  S.blockers.forEach((x,k)=>{
+    d.append(el('div','chip',show?nameOf(x):(LETTERS[Math.floor(Math.random()*6)]+(1+Math.floor(Math.random()*6)))));
+  });
+  if(!S.blockers.length) for(let k=0;k<7;k++) d.append(el('div','chip','?'));
+}
+
+function renderTimer(){
+  $('#timer').textContent=fmt(S.elapsed);
+  const b=(lsGet(BESTKEY)||{})[bestKey()];
+  $('#best').textContent=b?('Best '+fmt(b)):'';
+  $('#bNew').classList.toggle('on',S.mode==='random');
+  $('#bDaily').classList.toggle('on',S.mode==='daily');
+}
+function render(){renderBoard();renderTray();renderTimer();}
+
+// ---------- game logic ----------
+function candidate(i,pid){
+  const cs=S.cur[pid], tr=(i/6)|0, tc=i%6;
+  const cr=cs.reduce((a,x)=>a+x[0],0)/cs.length, cc=cs.reduce((a,x)=>a+x[1],0)/cs.length;
+  let best=null, bd=1e9;
+  for(const [r,c] of cs){
+    const dr=tr-r, dc=tc-c, cells=[]; let ok=true;
+    for(const [r2,c2] of cs){
+      const R=r2+dr, C=c2+dc;
+      if(R<0||R>5||C<0||C>5||S.grid[R*6+C]!==-1){ok=false;break;}
+      cells.push(R*6+C);
+    }
+    if(ok){const d=(r-cr)**2+(c-cc)**2; if(d<bd){bd=d;best=cells;}}
+  }
+  return best;
+}
+function active(){return !S.solved&&!S.gaveUp&&!S.rolling;}
+
+function onCell(i){
+  if(!active()) return;
+  S.hint=null; S.ghost=null;
+  const v=S.grid[i];
+  if(v===9) return;
+  if(v>=0){ // pick a placed piece back up
+    const cells=S.placed[v];
+    S.cur[v]=norm(cells.map(x=>[(x/6)|0,x%6]));
+    S.placed[v]=null; S.sel=v; applyPlacements();
+    render(); save(); return;
+  }
+  if(S.sel==null){ toast('Pick a piece from the tray first'); return; }
+  const cells=candidate(i,S.sel);
+  if(!cells){ toast("Doesn't fit there"); if(navigator.vibrate) navigator.vibrate(30); return; }
+  S.placed[S.sel]=cells; S.sel=null; applyPlacements();
+  render(); save();
+  if(S.placed.every(Boolean)) win();
+}
+
+function onPiece(pid){
+  if(!active()) return;
+  S.hint=null; S.ghost=null;
+  if(S.placed[pid]){ // lift it
+    const cells=S.placed[pid];
+    S.cur[pid]=norm(cells.map(x=>[(x/6)|0,x%6]));
+    S.placed[pid]=null; S.sel=pid; applyPlacements(); render(); save(); return;
+  }
+  if(S.sel===pid){ S.cur[pid]=rot(S.cur[pid]); }
+  else S.sel=pid;
+  render();
+}
+
+function win(){
+  S.solved=true; save();
+  const key=bestKey(), all=lsGet(BESTKEY)||{};
+  let note='';
+  if(!all[key]||S.elapsed<all[key]){ note=all[key]?'New best time!':'First solve of this one!'; all[key]=Math.round(S.elapsed); lsSet(BESTKEY,all); }
+  else note='Best: '+fmt(all[key]);
+  if(S.hints) note+=' · '+S.hints+' hint'+(S.hints>1?'s':'');
+  $('#winTime').textContent=fmt(S.elapsed);
+  $('#winNote').textContent=note;
+  $('#win').classList.add('show');
+  if(navigator.vibrate) navigator.vibrate([60,40,60]);
+  renderTimer();
+}
+
+function hint(){
+  if(!active()) return;
+  const sol=solveGrid(S.grid,S.placed.map(Boolean),300000);
+  if(!sol){ toast("That layout can't be finished — lift a piece or two"); return; }
+  if(!sol.length) return;
+  const pick=sol[0];
+  S.hint=pick; S.hints++; S.sel=null; render(); save();
+  setTimeout(()=>{ if(S.hint===pick){S.hint=null;renderBoard();} },3000);
+  toast('Flashing spot for the '+PIECES[pick.p].name);
+}
+
+function clearBoard(){
+  if(!active()) return;
+  S.placed=Array(9).fill(null); S.sel=null; S.hint=null; applyPlacements(); render(); save();
+}
+function giveUp(){
+  if(!active()) return;
+  if(!confirm('Show the solution? This ends the round.')) return;
+  S.gaveUp=true; S.hint=null; S.sel=null;
+  S.placed=Array(9).fill(null);
+  S.solution.forEach(s=>S.placed[s.p]=s.cells);
+  applyPlacements(); render(); save(); toast('Solution shown — start a new puzzle when ready');
+}
+
+function newGame(mode){
+  let seed;
+  if(mode==='daily'){const d=new Date();seed=d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();}
+  else seed=Math.floor(Math.random()*2147483647);
+  const pz=rollPuzzle(mulberry32(seed));
+  S=blank(); S.mode=mode; S.seed=seed; S.blockers=pz.blockers; S.solution=pz.solution;
+  S.rolling=true; $('#win').classList.remove('show'); toast('');
+  render(); // empty board while dice roll
+  let ticks=0;
+  const iv=setInterval(()=>{
+    renderDice(false);
+    if(++ticks>=9){
+      clearInterval(iv);
+      S.rolling=false; last=performance.now();
+      applyPlacements(); renderDice(true); render(); save();
+    }
+  },80);
+}
+
+function resume(){
+  const d=lsGet(KEY);
+  if(!d||!d.blockers||d.blockers.length!==7||d.solved||d.gaveUp) return false;
+  S=blank(); S.mode=d.mode; S.seed=d.seed; S.blockers=d.blockers;
+  S.placed=d.placed||Array(9).fill(null); S.elapsed=d.elapsed||0; S.hints=d.hints||0;
+  const g=Array(36).fill(-1); S.blockers.forEach(x=>g[x]=9);
+  S.solution=solveGrid(g,Array(9).fill(false),300000)||[];
+  applyPlacements(); renderDice(true); render();
+  return true;
+}
+
+// ---------- events ----------
+$('#board').addEventListener('click',e=>{const c=e.target.closest('.cell');if(c)onCell(+c.dataset.i);});
+$('#board').addEventListener('pointerover',e=>{
+  if(e.pointerType!=='mouse'||!active()||S.sel==null) return;
+  const c=e.target.closest('.cell'); if(!c) return;
+  const cells=S.grid[+c.dataset.i]===-1?candidate(+c.dataset.i,S.sel):null;
+  const next=cells?{p:S.sel,cells}:null;
+  if(JSON.stringify(next)!==JSON.stringify(S.ghost)){S.ghost=next;renderBoard();}
+});
+$('#board').addEventListener('pointerleave',()=>{if(S.ghost){S.ghost=null;renderBoard();}});
+$('#tray').addEventListener('click',e=>{const p=e.target.closest('.pc');if(p)onPiece(+p.dataset.p);});
+$('#bRot').onclick=()=>{ if(S.sel==null){toast('Pick a piece first');return;} S.cur[S.sel]=rot(S.cur[S.sel]); renderTray(); };
+$('#bFlip').onclick=()=>{ if(S.sel==null){toast('Pick a piece first');return;} S.cur[S.sel]=flip(S.cur[S.sel]); renderTray(); };
+$('#bHint').onclick=hint;
+$('#bReset').onclick=clearBoard;
+$('#bGive').onclick=giveUp;
+$('#bNew').onclick=()=>newGame('random');
+$('#bDaily').onclick=()=>newGame('daily');
+$('#winNew').onclick=()=>newGame('random');
+$('#winClose').onclick=()=>$('#win').classList.remove('show');
+
+// Timer: only counts while the page is visible and a round is live.
+setInterval(()=>{
+  const now=performance.now(), dt=now-last; last=now;
+  if(active()&&!document.hidden&&S.blockers.length&&dt<2000){ S.elapsed+=dt; $('#timer').textContent=fmt(S.elapsed); }
+},250);
+document.addEventListener('visibilitychange',()=>{last=performance.now();if(document.hidden)save();});
+window.addEventListener('pagehide',save);
+
+if(!resume()) newGame('random');
+
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
